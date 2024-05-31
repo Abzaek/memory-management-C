@@ -208,6 +208,41 @@ void free_memory(int process_id, int address) {
         free(process);
     }
 }
+// Function to terminate a process and free all its associated memory
+void terminate_process(int process_id) {
+    Process* process = process_list;
+    Process* prev_process = NULL;
+
+    // Find the process in the process list
+    while (process && process->process_id != process_id) {
+        prev_process = process;
+        process = process->next;
+    }
+
+    if (!process) {
+        printf("Process %d not found.\n", process_id);
+        return;
+    }
+
+    // Free all memory associated with the process
+    AllocatedBlock* block = process->allocated_blocks;
+    while (block) {
+        AllocatedBlock* temp = block->next;
+        free_memory(process_id, block->start);
+        block = temp;
+        free(temp);  // Free the memory occupied by each allocated block
+    }
+    process->allocated_blocks = NULL;  // Reset the allocated blocks list
+
+    // Remove the process from the process list
+    if (prev_process) {
+        prev_process->next = process->next;
+    } else {
+        process_list = process->next;
+    }
+    free(process);
+    printf("Process %d terminated and all associated memory freed.\n", process_id);
+}
 
 // Display the current memory status
 void show_memory() {
@@ -261,13 +296,13 @@ void show_memory() {
 // Display the help message with available commands
 void show_help() {
     printf("Available commands:\n");
-    printf("create <process_id> - Creates a new process with the given ID\n");
-    printf("terminate <process_id> - Terminates the process with the given ID and frees all its memory\n");
-    printf("allocate <process_id> <size> - Allocates memory of the given size for the specified process\n");
-    printf("free <process_id> <address> - Frees the memory block starting at the specified address for the given process\n");
-    printf("show memory - Displays the current memory status\n");
-    printf("exit - Exits the program\n");
-    printf("help - Shows this help message\n");
+    printf("create <process_id>             - Creates a new process with the given ID\n");
+    printf("terminate <process_id>          - Terminates the process with the given ID and frees all its memory\n");
+    printf("allocate <process_id> <size>    - Allocates memory of the given size for the specified process\n");
+    printf("free <process_id> <address>     - Frees the memory block starting at the specified address for the given process\n");
+    printf("show memory                     - Displays the current memory status\n");
+    printf("exit                            - Exits the program\n");
+    printf("help                            - Shows this help message\n");
 }
 
 
@@ -286,8 +321,8 @@ void parse_command(char* command) {
         printf("Process %d created.\n", process_id);
     } else if (strcmp(token, "terminate") == 0) {
         int process_id = atoi(strtok(NULL, " "));
-        free_memory(process_id, 0);  // Free all memory allocated to the process
-        printf("Process %d terminated.\n", process_id);
+        terminate_process(process_id);  // Free all memory allocated to the process
+        // printf("Process %d terminated.\n", process_id);
     } else if (strcmp(token, "allocate") == 0) {
         int process_id = atoi(strtok(NULL, " "));
         int size = atoi(strtok(NULL, " "));
